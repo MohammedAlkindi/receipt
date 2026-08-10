@@ -16,6 +16,6 @@ pytest
 ```
 
 ## Conventions
-- Conventional commits, one logical change each; secrets never hardcoded; external API calls via a service layer; errors normalized before the client.
+- House standards (commit format, secrets, service layer, error normalization) are global: see `~/.claude/CLAUDE.md`. Only project-specific rules belong here.
 - Python: virtualenv always, `requirements.txt` pinned, deterministic logic split from I/O.
 
