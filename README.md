@@ -134,41 +134,46 @@ receipt analyze ~/Downloads/chase_activity.csv \
   --api-key $ANTHROPIC_API_KEY
 ```
 
-Expected terminal output (illustrative — numbers match the bundled Chase sample, narrative text is representative):
+Output of `receipt demo` on the bundled Chase sample (trimmed):
 
 ```
-╭──────────────────────────────────────────────────────╮
-│                   Spending Summary                   │
-├─────────────────────────────┬────────────────────────┤
-│ Metric                      │ Value                  │
-├─────────────────────────────┼────────────────────────┤
-│ Transactions                │ 29                     │
-│ Total Spent                 │ $874.23                │
-│ Total Income                │ $3,200.00              │
-│ Net                         │ $2,325.77              │
-│ Subscriptions               │ $117.46                │
-│ Most Visited                │ Trader Joe's (2×)      │
-│ Largest Purchase            │ $149.00 at Amazon      │
-╰─────────────────────────────┴────────────────────────╯
+               Spending Summary
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Metric           ┃                    Value ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ Transactions     │                       30 │
+│ Total Spent      │                 $2290.49 │
+│ Total Income     │                 $3200.00 │
+│ Net              │                  $909.51 │
+│ Subscriptions    │                  $118.46 │
+│ Most Visited     │        Trader Joe'S (2×) │
+│ Largest Purchase │ $1200.00 at Rent Payment │
+└──────────────────┴──────────────────────────┘
+                 By Category
+┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━┳━━━━━━━━━┓
+┃ Category       ┃    Total ┃ Txns ┃     Avg ┃
+┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━╇━━━━━━━━━┩
+│ Housing        │ $1327.00 │    3 │ $442.33 │
+│ Shopping       │  $320.38 │    5 │  $64.08 │
+│ Groceries      │  $205.10 │    3 │  $68.37 │
+│ Food Dining    │  $151.80 │    7 │  $21.69 │
+│ Subscriptions  │  $118.46 │    5 │  $23.69 │
+│ Health         │   $71.50 │    2 │  $35.75 │
+│ Other          │   $50.00 │    1 │  $50.00 │
+│ Transportation │   $46.25 │    3 │  $15.42 │
+└────────────────┴──────────┴──────┴─────────┘
 
-╭─────────────────── SUBSCRIPTION_CREEP ───────────────╮
-│  6 active subscriptions totalling $117.46            │
-╰──────────────────────────────────────────────────────╯
-
-╭──────────────────── AI Insights ─────────────────────╮
-│                                                      │
-│  TL;DR  Delivery apps captured 80% of your dining   │
-│         budget: $122 of $152 spent eating out went  │
-│         to Uber Eats, DoorDash, or Grubhub.         │
-│                                                      │
-│  ▸ Grubhub's April 19 order ($38.50) was your       │
-│    third-largest individual charge this month —      │
-│    behind only rent and the $149 Amazon purchase.   │
-│    Four delivery orders in 19 days is a run rate    │
-│    of ~$237/month if April's frequency holds.       │
-│                                                      │
-╰──────────────────────────────────────────────────────╯
+Detected Patterns
+...
+╭─────────────────────────── ANOMALOUS_WEEK ───────────────────────────╮
+│ Week of 2026-03-30/2026-04-05 was 2.4x your typical week             │
+╰──────────────────────────────────────────────────────────────────────╯
 ```
+
+The demo also lists every detected pattern and the statistical outliers. With
+an API key, `receipt analyze` adds the narrative: a TL;DR panel, one panel per
+insight, and a Next Steps panel. With `--compare` and a saved earlier period,
+it adds a drift panel.
 
 ---
 
