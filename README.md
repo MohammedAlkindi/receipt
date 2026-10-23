@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/MohammedAlkindi/Receipt/pulls)
 
-Your bank app tells you how much you spent. **receipt** tells you what actually happened — semantic clustering, seven behavioral detectors, and an AI narrative that thinks like a sharp friend with an accounting degree: specific dollar amounts, named merchants, non-obvious patterns, and none of the generic budget-app moralizing.
+Your bank app tells you how much you spent. **receipt** reads a bank CSV export and shows where the money went: embedding-based categories, seven behavioral detectors, anomaly scores for each expense, and an optional AI narrative that names specific merchants and dollar amounts.
 
 ---
 
@@ -51,9 +51,9 @@ CSV file / base64 payload
 ## Features
 
 - **Auto-detects bank format** from column signatures — drop a Chase, BofA, Plaid, or generic CSV export and the right parser is selected without a flag.
-- **Semantic transaction clustering** via `all-MiniLM-L6-v2` + HDBSCAN groups transactions by meaning, not keyword matching — "SBUX #04892" and "Starbucks Store Times Sq" land in the same cluster automatically.
+- **Semantic categorization** embeds each description with `all-MiniLM-L6-v2` and assigns the closest of eight seed categories, so a merchant string does not need an exact keyword match. HDBSCAN also tags each transaction with a cluster id. Without the model, a keyword fallback is used.
 - **Seven behavioral detectors** flag subscription creep, anomalous spending weeks, weekend splurge, single-merchant dominance, late-night food spend, income irregularity, and recurring-forgotten merchants.
-- **Isolation Forest anomaly scoring** assigns an outlier score to every individual transaction, surfacing charges that are statistically unusual relative to your own patterns.
+- **Isolation Forest anomaly scoring** scores each expense in the period (when there are at least five) on amount, weekday and hour, and flags the highest-scoring 5% as statistical outliers.
 - **Month-over-month drift tracking** reports which categories accelerated or shrank >20%, which merchants appeared or disappeared, and whether second-half spend outpaced first-half.
 - **Forensic AI narrative** via the Anthropic API generates a TL;DR, 3–5 insights anchored to specific merchants and dollar amounts, and a concrete next-steps paragraph — with a quality guard that suppresses generic phrases before the report is returned.
 - **Persistent run history** stores every analysis to SQLite; replay, compare, or export any past run as Markdown with a single command.
@@ -79,7 +79,7 @@ cp .env.example .env
 
 > **Python ≥ 3.11 required.**
 
-> **Note:** The first run downloads the `all-MiniLM-L6-v2` sentence-transformers model (~80 MB).
+> **Note:** The first run downloads the `all-MiniLM-L6-v2` sentence-transformers model (about 90 MB).
 > Use `receipt demo` or pass `use_embeddings=False` to skip this download.
 
 ---
@@ -289,15 +289,15 @@ curl http://localhost:8000/health
 
 ## How the Semantic Categorizer Works
 
-1. **Embedding** — Each transaction description is passed through `all-MiniLM-L6-v2` (a 22M-parameter sentence-transformer model, ~80 MB). This converts the raw string into a 384-dimensional dense vector that captures semantic meaning, so "SBUX #04892" and "Starbucks Store Times Sq" land near each other in vector space.
+1. **Embedding** — Each transaction description is passed through `all-MiniLM-L6-v2` (a 22.7M-parameter sentence-transformer model, about 90 MB). This converts the raw string into a 384-dimensional vector. Descriptions with similar meaning end up close together.
 
 2. **Clustering** — HDBSCAN groups all transaction vectors into variable-density clusters. Clusters are determined by the actual shape of your data, not a preset number of categories k. Outliers get `cluster_id = -1`.
 
-3. **Labelling** — Each cluster is matched to a human-readable category by computing cosine similarity between the cluster centroid and pre-computed centroids for 8 seed categories (`food_dining`, `groceries`, `subscriptions`, `transportation`, `shopping`, `income`, `health`, `housing`). Seed centroids are averaged embeddings of a curated vocabulary list.
+3. **Labelling** — Each transaction gets the category whose seed centroid is most similar to its own vector (cosine similarity). There are 8 seed categories (`food_dining`, `groceries`, `subscriptions`, `transportation`, `shopping`, `income`, `health`, `housing`). Seed centroids are averaged embeddings of a curated vocabulary list. The HDBSCAN `cluster_id` is stored with the transaction but does not change its category.
 
-4. **Fallback** — If `sentence-transformers` is unavailable (e.g., CI environment), the categorizer falls back to fast keyword matching against the same seed vocabulary with a fixed 0.9 confidence score.
+4. **Fallback** — If `sentence-transformers` cannot be loaded, or `use_embeddings=False` is passed, the categorizer uses keyword matching against the same seed vocabulary. A keyword match gets a fixed 0.9 confidence. A description with no match is `other`.
 
-Embeddings and HDBSCAN labels are not cached between runs by default; call `cache_embeddings(path)` to persist the seed centroids to disk and skip re-encoding on subsequent runs.
+Seed centroids are recomputed on every run. `cache_embeddings(path)` writes them to disk and `load_cached_embeddings(path)` reads them back, but the CLI and API do not call either.
 
 ---
 
@@ -413,7 +413,7 @@ On Windows, the Scripts directory is typically `%APPDATA%\Python\PythonXY\Script
 
 **First run is slow / downloads a large file**
 
-`receipt analyze` downloads the `all-MiniLM-L6-v2` model (~80 MB) on first use. Use `receipt demo` to skip the download entirely, or set `use_embeddings=False` in the categorizer for local testing.
+`receipt analyze` downloads the `all-MiniLM-L6-v2` model (about 90 MB) on first use. Use `receipt demo` to skip the download entirely, or set `use_embeddings=False` in the categorizer for local testing.
 
 **Narrative generation times out**
 
@@ -432,8 +432,7 @@ The Anthropic API call has a 30-second timeout. If your network is slow or the A
 ## Known Limitations
 
 - **Max 50,000 transactions per file** — the generic CSV parser enforces this guard to prevent memory exhaustion.
-- **sentence-transformers requires ~80 MB download on first run** — use `SemanticCategorizer(use_embeddings=False)` or `receipt demo` to skip.
-- **HDBSCAN clusters are most meaningful on 200+ transactions** — on smaller datasets the keyword fallback produces better category labels.
+- **sentence-transformers downloads about 90 MB on first run** — use `SemanticCategorizer(use_embeddings=False)` or `receipt demo` to skip.
 - **FastAPI server is single-process** — for concurrent use, run with multiple workers: `uvicorn receipt.api.server:app --workers 4` (requires `gunicorn` as process manager on Linux/macOS).
 
 ---
