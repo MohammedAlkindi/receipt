@@ -542,6 +542,20 @@ class TestAnalyzeEndpoint:
 
         return base64.b64encode(text.encode()).decode()
 
+    def _freeze_now(self, monkeypatch):
+        """/analyze keeps rows from the last `period` days before now. Pin now
+        to just after the fixture rows so these tests do not expire."""
+        from datetime import UTC, datetime
+
+        frozen = datetime(2026, 7, 25, tzinfo=UTC)
+
+        class FrozenDatetime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return frozen if tz is None else frozen.astimezone(tz)
+
+        monkeypatch.setattr("receipt.api.server.datetime", FrozenDatetime)
+
     def _mock_pipeline(self, mocker, tmp_path, monkeypatch):
         """Force keyword categorization (no model download) and mock the
         Anthropic call; route the store at a temp DB."""
@@ -550,6 +564,7 @@ class TestAnalyzeEndpoint:
 
         monkeypatch.setenv("RECEIPT_DB_PATH", str(tmp_path / "api.db"))
         monkeypatch.delenv("RECEIPT_API_TOKEN", raising=False)
+        self._freeze_now(monkeypatch)
 
         mocker.patch(
             "receipt.pipeline.categorizer.SemanticCategorizer",
