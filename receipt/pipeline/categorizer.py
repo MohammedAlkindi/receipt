@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 
 if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
+
     from receipt.pipeline.audit import PipelineAuditLog
 
 logger = logging.getLogger(__name__)
@@ -68,7 +70,7 @@ class SemanticCategorizer:
             ).expanduser()
         self._cache_dir = cache_dir
         self._use_embeddings = use_embeddings
-        self._model = None
+        self._model: SentenceTransformer | None = None
         self._seed_embeddings: dict[str, np.ndarray] = {}
 
     def _load_model(self) -> None:
@@ -182,7 +184,7 @@ class SemanticCategorizer:
         else:
             cluster_ids = [-1] * len(descriptions)
             result = [self._keyword_category(d) for d in descriptions]
-            categories, confidences = zip(*result) if result else ([], [])
+            categories, confidences = zip(*result) if result else ((), ())
 
         df["category"] = list(categories)
         df["category_confidence"] = list(confidences)
