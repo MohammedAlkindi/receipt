@@ -1,12 +1,12 @@
 ﻿# AGENTS.md — Receipt
 
-Read this and `CLAUDE.md` before working here. Full standards: `~/.claude/CLAUDE.md` and `~/Github/CLAUDE.md`.
+Read this and `CLAUDE.md` before working here.
 
 ## Scope
 Implement features, fix bugs, and refactor within this repo.
 
 ## Branch & commits
-- Branch prefix by agent: Claude → `claude/<type>-<kebab>`, Codex → `Codex/<type>-<kebab>`.
+- Branch names: `<type>/<kebab-description>`, never an agent or tool name.
 - Conventional-commit messages; one logical change per commit; PRs via the `gh` CLI.
 
 ## Requires explicit confirmation
