@@ -86,7 +86,7 @@ cp .env.example .env
 
 ## Database Migrations
 
-receipt uses [Alembic](https://alembic.sqlalchemy.org/) to manage schema migrations. You must run migrations once after installation and again after each upgrade:
+receipt uses [Alembic](https://alembic.sqlalchemy.org/) to manage schema migrations. The app creates any missing tables on first use. Run `alembic upgrade head` from the repository root after installation and after each upgrade so an existing database gets new migrations:
 
 ```bash
 # After first install
@@ -117,7 +117,7 @@ alembic current          # show applied revision
 # Step 1: install (required before any receipt command works)
 pip install -e .
 
-# Step 2: apply database schema (required once after install)
+# Step 2: apply database migrations (see Database Migrations)
 alembic upgrade head
 
 # Try the bundled Chase sample — no API key, no model download
@@ -391,7 +391,9 @@ def detect_parser(path):
 
 3. Add a `@classmethod detect` that returns `True` only for your bank's specific column signature — this prevents false positives when the factory tries every parser.
 
-4. Add a fixture and tests in `tests/test_ingestion.py` mirroring the existing bank tests.
+4. Add the parser to the `--format` map in `receipt/cli.py`, and to the format map and auto-detect loop in `receipt/api/server.py`. Both keep their own parser lists.
+
+5. Add a fixture and tests in `tests/test_ingestion.py` mirroring the existing bank tests.
 
 ---
 
@@ -406,12 +408,9 @@ pytest --cov=receipt --cov-report=term-missing
 
 # Run a single module
 pytest tests/test_ingestion.py -v
-
-# Skip slow embedding tests (avoids ~80MB model download in CI)
-pytest -k "not embedding"
 ```
 
-Tests use the sample CSVs in `data/sample/` as fixtures and do **not** require an Anthropic API key — the narrator tests mock the API call.
+No test loads the embedding model, so the suite needs no model download. Tests use the sample CSVs in `data/sample/` as fixtures and do **not** require an Anthropic API key — the narrator tests mock the API call.
 
 ---
 
@@ -447,9 +446,9 @@ The Anthropic API call has a 30-second timeout. If your network is slow or the A
 
 ## Known Limitations
 
-- **Max 50,000 transactions per file** — the generic CSV parser enforces this guard to prevent memory exhaustion.
+- **Max 50,000 transactions per file** — every parser enforces this guard to prevent memory exhaustion.
 - **sentence-transformers downloads about 90 MB on first run** — use `SemanticCategorizer(use_embeddings=False)` or `receipt demo` to skip.
-- **FastAPI server is single-process** — for concurrent use, run with multiple workers: `uvicorn receipt.api.server:app --workers 4` (requires `gunicorn` as process manager on Linux/macOS).
+- **FastAPI server is single-process** — `receipt serve` starts one worker. For concurrent use, run `uvicorn receipt.api.server:app --workers 4` directly.
 
 ---
 
