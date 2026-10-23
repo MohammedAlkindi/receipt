@@ -325,6 +325,34 @@ class TestNarrator:
         assert len(report.insights) == 1
         assert report.insights[0].headline == "Chipotle hit $187 over 11 visits"
 
+    def test_sends_only_parameters_the_sdk_accepts(self, sample_df):
+        """anthropic 2.x removed temperature from messages.create. Passing it
+        raised TypeError on every attempt, so no narrative was ever produced."""
+        import inspect
+
+        from anthropic.resources.messages import Messages
+
+        from receipt.analysis.narrator import Narrator
+        from receipt.pipeline.aggregator import compute_stats
+
+        stats = compute_stats(sample_df)
+        mock_response = MagicMock()
+        mock_response.content = [
+            MagicMock(
+                text='{"insights": [{"headline": "Chipotle hit $187 over 11 visits", '
+                     '"detail": "That is 34% of the $547 food budget."}], '
+                     '"next_steps": "Cancel two services to save $29/month.", '
+                     '"tldr": "Chipotle was 34% of a $547 food budget."}'
+            )
+        ]
+        with patch("receipt.analysis.narrator.anthropic.Anthropic") as MockClient:
+            create = MockClient.return_value.messages.create
+            create.return_value = mock_response
+            Narrator(api_key="test-key").generate_narrative(stats, [])
+
+        accepted = set(inspect.signature(Messages.create).parameters)
+        assert set(create.call_args.kwargs) <= accepted
+
     def test_quality_guard_drops_generic_keeps_specific(self, sample_df):
         """M1: the guard suppresses low-signal insights but keeps the specific
         ones, returning on the first attempt when at least one survives."""

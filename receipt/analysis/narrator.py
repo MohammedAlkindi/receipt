@@ -6,8 +6,8 @@ ASSUMPTIONS:
 - Pattern.severity is constrained to ("critical", "warning", "info") per patterns.py.
 - DriftReport attributes (velocity_trend, increased, decreased, new_merchants,
   dropped_merchants, subscription_drift) are accessed identically to the original.
-- temperature=0.7 balances specificity with creative recombination; lower it (e.g.
-  0.3) if output grows too unpredictable for production use.
+- No sampling parameters are sent. anthropic 2.x removed temperature, top_p and
+  top_k from messages.create, and API version 2026-10-21 rejects them on every model.
 - by_merchant entries have the shape {description: {total: float, count: int}}
   as produced by aggregator.compute_stats() via DataFrame.to_dict(orient="index").
 """
@@ -350,9 +350,8 @@ class Narrator:
     MAX_RETRIES = 3
     API_TIMEOUT = 30.0
 
-    def __init__(self, api_key: str, temperature: float = 0.7):
+    def __init__(self, api_key: str):
         self._api_key = api_key
-        self._temperature = temperature
 
     @staticmethod
     def _apply_quality_guard(
@@ -433,7 +432,6 @@ class Narrator:
                     system=_SYSTEM_PROMPT,
                     messages=[{"role": "user", "content": user_content}],
                     timeout=self.API_TIMEOUT,
-                    temperature=self._temperature,
                 )
                 raw_text = getattr(response.content[0], "text", "") if response.content else ""
                 data = json.loads(raw_text)
