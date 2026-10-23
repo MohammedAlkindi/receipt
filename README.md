@@ -252,7 +252,11 @@ receipt serve --port 8000
 
 ## API Usage
 
+Start the server with `receipt serve`. If `RECEIPT_API_TOKEN` is set, every endpoint except `/health` also needs an `X-Receipt-Token` header with that value. Request bodies are limited to 10 MB.
+
 ### `POST /analyze`
+
+Needs an Anthropic key in `X-Api-Key`. The endpoint always generates the narrative and saves the run.
 
 ```bash
 # Encode your CSV and call the endpoint
@@ -287,7 +291,7 @@ curl http://localhost:8000/merchants | jq '.[0:5]'
 
 ```bash
 curl http://localhost:8000/health
-# {"status": "ok", "db": {"transactions": 29, "analysis_runs": 1, "merchants": 18}, "narrative_service": "unknown"}
+# {"status": "ok", "db": {"transactions": 30, "analysis_runs": 1, "merchants": 27}, "version": "0.1.0", "narrative_service": "unknown"}
 ```
 
 ---
@@ -326,16 +330,23 @@ The 20% threshold is set with `DriftDetector(drift_threshold=...)`, the `--drift
 
 ## Configuration
 
-All settings can be placed in `.env` at the project root:
+Settings are environment variables. The values below are the defaults, except the API key:
 
 ```env
 ANTHROPIC_API_KEY=sk-ant-...
 RECEIPT_DB_PATH=~/.receipt/receipt.db
-RECEIPT_API_HOST=0.0.0.0
+RECEIPT_API_HOST=127.0.0.1
 RECEIPT_API_PORT=8000
+RECEIPT_API_TOKEN=
+RECEIPT_CORS_ORIGINS=
 RECEIPT_MODEL_CACHE=~/.receipt/models
 RECEIPT_LOG_LEVEL=INFO
 ```
+
+- `receipt serve` binds to `127.0.0.1` unless `--host` or `RECEIPT_API_HOST` says otherwise, and prints a warning when it binds anywhere else.
+- When `RECEIPT_API_TOKEN` is set, API calls must send it in `X-Receipt-Token`. When it is unset, the API has no authentication.
+- CORS is off unless `RECEIPT_CORS_ORIGINS` lists allowed origins, separated by commas.
+- `receipt analyze`, `demo`, `history`, `merchants` and `export` also read a `.env` file (see `.env.example`). `receipt serve`, the API server and `alembic` do not, so export the variables in your shell for those.
 
 ---
 
@@ -430,7 +441,7 @@ The Anthropic API call has a 30-second timeout. If your network is slow or the A
 
 - [ ] **PyPI release** — install-from-source only for now. The distribution name `receipt` is already taken on PyPI by an unrelated project, so publishing needs a different name first; `pip install receipt` today installs someone else's package, not this one.
 - [ ] **Hosted demo** — a zero-install web interface where anyone can upload a CSV and see an analysis without running a local server.
-- [ ] **Multi-user API support** — the FastAPI server has no authentication or user isolation; supporting multiple users requires API key auth and per-user database partitioning.
+- [ ] **Multi-user API support** — the FastAPI server has one optional shared token (`RECEIPT_API_TOKEN`) and no user isolation. Supporting multiple users requires per-user auth and database partitioning.
 
 ---
 
