@@ -17,7 +17,7 @@ CSV file / base64 payload
          ▼
  ┌───────────────┐
  │   Ingestion   │  Auto-detects bank format; Chase / BofA / Plaid / Generic
- │  (parsers)    │  → standard DataFrame: {date, description, amount, source, tx_id}
+ │  (parsers)    │  → standard DataFrame: {date, description, raw_description, amount, source, transaction_id}
  └──────┬────────┘
         │
         ▼
@@ -56,7 +56,7 @@ CSV file / base64 payload
 - **Isolation Forest anomaly scoring** scores each expense in the period (when there are at least five) on amount, weekday and hour, and flags the highest-scoring 5% as statistical outliers.
 - **Month-over-month drift tracking** reports which categories accelerated or shrank >20%, which merchants appeared or disappeared, and whether second-half spend outpaced first-half.
 - **Forensic AI narrative** via the Anthropic API generates a TL;DR, 3–5 insights anchored to specific merchants and dollar amounts, and a concrete next-steps paragraph — with a quality guard that suppresses generic phrases before the report is returned.
-- **Persistent run history** stores every analysis to SQLite; replay, compare, or export any past run as Markdown with a single command.
+- **Run history** in SQLite. `receipt analyze --save` stores a run (the API stores every run). `receipt history` lists runs and `receipt export <RUN_ID>` prints one as Markdown.
 - **CLI and REST API** — the same pipeline runs as a `receipt analyze` command or as a FastAPI server accepting base64-encoded CSV payloads for programmatic access.
 
 ---
@@ -192,11 +192,13 @@ receipt demo
 | Option | Default | Description |
 |---|---|---|
 | `--format` / `-f` | `auto` | `auto` \| `chase` \| `bofa` \| `plaid` \| `generic` |
-| `--period` / `-p` | `30` | Days to analyse (30 / 60 / 90) |
-| `--compare` | off | Compare to previous stored period |
+| `--period` / `-p` | `30` | Days to analyse, counted back from today (1 to 36500) |
+| `--compare` | off | Compare to the previous saved period |
 | `--output` / `-o` | `terminal` | `terminal` \| `json` \| `markdown` |
-| `--save` | off | Save results to `~/.receipt/receipt.db` |
+| `--save` | off | Save results to the database at `RECEIPT_DB_PATH` (default `~/.receipt/receipt.db`) |
 | `--api-key` | env | Anthropic API key (falls back to `ANTHROPIC_API_KEY`) |
+| `--dedup-window` | `2` | Near-duplicate window in days (0 to 7, 0 disables) |
+| `--drift-threshold` | `0.20` | Category change that counts as drift with `--compare` (0.0 to 1.0) |
 
 ```bash
 # JSON output — pipe to jq
@@ -215,23 +217,26 @@ List past analysis runs with dates and AI summaries.
 
 ```bash
 $ receipt history
-┌──────────────┬────────────┬──────────────────────────┬───────┬──────────────────────────────────┐
-│ Run ID       │ Date       │ Period                   │ Txns  │ TL;DR                            │
-├──────────────┼────────────┼──────────────────────────┼───────┼──────────────────────────────────┤
-│ a3f9c2e1b0d4 │ 2026-05-10 │ 2026-04-01 – 2026-04-30  │  29   │ Food delivery ate 34% of...      │
-└──────────────┴────────────┴──────────────────────────┴───────┴──────────────────────────────────┘
+                           Analysis History
+┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━┓
+┃ Run ID       ┃ Date       ┃ Period                  ┃ Txns ┃ TL;DR ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━┩
+│ 8542c66d1aa4 │ 2026-10-23 │ 2026-04-01 – 2026-04-22 │   30 │       │
+└──────────────┴────────────┴─────────────────────────┴──────┴───────┘
 ```
+
+The TL;DR column is empty for runs made without an API key.
 
 ### `receipt merchants`
 
 Top merchants by lifetime spend (requires `--save` on at least one prior run).
 
-### `receipt export [RUN_ID]`
+### `receipt export <RUN_ID>`
 
 Export a past run as Markdown to stdout:
 
 ```bash
-receipt export a3f9c2e1b0d4 > april-report.md
+receipt export 8542c66d1aa4 > april-report.md
 ```
 
 ### `receipt serve`
@@ -315,7 +320,7 @@ Seed centroids are recomputed on every run. `cache_embeddings(path)` writes them
 | `subscription_drift` | New / cancelled subscription merchants |
 | `narrative_hints` | Pre-formed plain-English sentences fed to the narrator |
 
-The 20% threshold is configurable via `DriftDetector.DRIFT_THRESHOLD`.
+The 20% threshold is set with `DriftDetector(drift_threshold=...)`, the `--drift-threshold` CLI option, or `drift_threshold` in an API request. The class attribute `DriftDetector.DRIFT_THRESHOLD` is not read.
 
 ---
 
