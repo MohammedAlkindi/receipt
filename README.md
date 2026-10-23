@@ -7,6 +7,8 @@
 
 Your bank app tells you how much you spent. **receipt** reads a bank CSV export and shows where the money went: embedding-based categories, seven behavioral detectors, anomaly scores for each expense, and an optional AI narrative that names specific merchants and dollar amounts.
 
+Where each step runs: parsing, cleaning, categorization (a sentence-transformers model that runs on your machine after a one-time download), the detectors and the anomaly scores all run locally. The narrative is the one step that calls a hosted model. It sends the computed summary, including flagged merchants and amounts, to the Anthropic API, and it runs only when you give it a key.
+
 ---
 
 ## Architecture
