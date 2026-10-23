@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "receipt"
 version = "0.1.0"
-description = "Intelligent personal finance analysis engine — ingests bank transaction data, clusters it semantically, tracks behavioral drift, and generates plain-English narratives via the Anthropic API."
+description = "Personal finance analysis engine that reads bank transaction CSVs, categorizes them with sentence embeddings, tracks spending drift, and writes plain-English narratives with the Anthropic API."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Mohammed Alkindi", email = "alkndymhmd692@gmail.com" }]
