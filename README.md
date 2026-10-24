@@ -3,7 +3,10 @@
 [![CI](https://github.com/MohammedAlkindi/Receipt/actions/workflows/ci.yml/badge.svg)](https://github.com/MohammedAlkindi/Receipt/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11%20|%203.12-blue)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/MohammedAlkindi/Receipt/pulls)
+
+> Archived in October 2026 as a finished project. The code and tests stay
+> available, but it is no longer maintained. Spreadsheet analysis continues in
+> [Ridge](https://github.com/MohammedAlkindi/ridge).
 
 Your bank app tells you how much you spent. **receipt** reads a bank CSV export and shows where the money went: embedding-based categories, seven behavioral detectors, anomaly scores for each expense, and an optional AI narrative that names specific merchants and dollar amounts.
 
