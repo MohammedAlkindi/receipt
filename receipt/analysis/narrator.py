@@ -19,7 +19,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Final
 
 import anthropic
 
@@ -345,8 +345,11 @@ def _build_prompt(
 class Narrator:
     """Generate plain-English financial narratives via the Anthropic API."""
 
-    MODEL = "claude-sonnet-4-20250514"
-    MAX_TOKENS = 2000
+    # Claude Sonnet 5.5 thinks by default. Thinking counts toward MAX_TOKENS,
+    # and a reply can open with a thinking block before the text block.
+    MODEL = "claude-sonnet-5-5"
+    MAX_TOKENS = 16000
+    EFFORT: Final = "low"
     MAX_RETRIES = 3
     API_TIMEOUT = 30.0
 
@@ -429,11 +432,14 @@ class Narrator:
                 response = client.messages.create(
                     model=self.MODEL,
                     max_tokens=self.MAX_TOKENS,
+                    output_config={"effort": self.EFFORT},
                     system=_SYSTEM_PROMPT,
                     messages=[{"role": "user", "content": user_content}],
                     timeout=self.API_TIMEOUT,
                 )
-                raw_text = getattr(response.content[0], "text", "") if response.content else ""
+                raw_text = next(
+                    (block.text for block in response.content if block.type == "text"), ""
+                )
                 data = json.loads(raw_text)
                 insights = [
                     Insight(headline=i["headline"], detail=i["detail"])

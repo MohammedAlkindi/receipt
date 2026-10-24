@@ -308,6 +308,7 @@ class TestNarrator:
         mock_response = MagicMock()
         mock_response.content = [
             MagicMock(
+                type="text",
                 text='{"insights": [{"headline": "Chipotle hit $187 over 11 visits", '
                      '"detail": "That is 34% of the $547 food budget."}], '
                      '"next_steps": "Cancel two of five streaming services to save $29/month.", '
@@ -339,6 +340,7 @@ class TestNarrator:
         mock_response = MagicMock()
         mock_response.content = [
             MagicMock(
+                type="text",
                 text='{"insights": [{"headline": "Chipotle hit $187 over 11 visits", '
                      '"detail": "That is 34% of the $547 food budget."}], '
                      '"next_steps": "Cancel two services to save $29/month.", '
@@ -353,6 +355,35 @@ class TestNarrator:
         accepted = set(inspect.signature(Messages.create).parameters)
         assert set(create.call_args.kwargs) <= accepted
 
+    def test_reads_the_text_block_after_a_thinking_block(self, sample_df):
+        """Claude Sonnet 5.5 thinks by default, so a reply can open with a
+        thinking block whose text is empty. Reading the first block by position
+        found no JSON and every attempt failed."""
+        from anthropic.types import TextBlock, ThinkingBlock
+
+        from receipt.analysis.narrator import Narrator
+        from receipt.pipeline.aggregator import compute_stats
+
+        stats = compute_stats(sample_df)
+        mock_response = MagicMock()
+        mock_response.content = [
+            ThinkingBlock(type="thinking", thinking="", signature="sig"),
+            TextBlock(
+                type="text",
+                text='{"insights": [{"headline": "Chipotle hit $187 over 11 visits", '
+                     '"detail": "That is 34% of the $547 food budget."}], '
+                     '"next_steps": "Cancel two services to save $29/month.", '
+                     '"tldr": "Chipotle was 34% of a $547 food budget."}',
+            ),
+        ]
+        with patch("receipt.analysis.narrator.anthropic.Anthropic") as MockClient:
+            create = MockClient.return_value.messages.create
+            create.return_value = mock_response
+            report = Narrator(api_key="test-key").generate_narrative(stats, [])
+
+        assert report.tldr == "Chipotle was 34% of a $547 food budget."
+        assert create.call_count == 1
+
     def test_quality_guard_drops_generic_keeps_specific(self, sample_df):
         """M1: the guard suppresses low-signal insights but keeps the specific
         ones, returning on the first attempt when at least one survives."""
@@ -363,6 +394,7 @@ class TestNarrator:
         mock_response = MagicMock()
         mock_response.content = [
             MagicMock(
+                type="text",
                 text='{"insights": ['
                 '{"headline": "You spent a lot on food", "detail": "It looks like a lot."}, '
                 '{"headline": "Chipotle was 34% of the $547 food budget", '
@@ -389,6 +421,7 @@ class TestNarrator:
         mock_response = MagicMock()
         mock_response.content = [
             MagicMock(
+                type="text",
                 text='{"insights": [{"headline": "You spent money", '
                 '"detail": "Consider reducing spending."}], '
                 '"next_steps": "Spend less.", "tldr": "Generic."}'
@@ -410,10 +443,11 @@ class TestNarrator:
 
         stats = compute_stats(sample_df)
         empty = MagicMock()
-        empty.content = [MagicMock(text='{"insights": [], "next_steps": "", "tldr": ""}')]
+        empty.content = [MagicMock(type="text", text='{"insights": [], "next_steps": "", "tldr": ""}')]
         good = MagicMock()
         good.content = [
             MagicMock(
+                type="text",
                 text='{"insights": [{"headline": "Chipotle was 34% of $547", '
                 '"detail": "Eleven visits at $187."}], '
                 '"next_steps": "Cancel two services for $29/month.", "tldr": "Food heavy."}'

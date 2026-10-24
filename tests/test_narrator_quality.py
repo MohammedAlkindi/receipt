@@ -66,7 +66,7 @@ _GOOD_JSON: str = json.dumps(_GOOD_NARRATIVE)
 def _make_response(json_text: str) -> MagicMock:
     """Return a MagicMock that mimics an Anthropic messages.create() response."""
     mock_resp = MagicMock()
-    mock_resp.content = [MagicMock(text=json_text)]
+    mock_resp.content = [MagicMock(type="text", text=json_text)]
     return mock_resp
 
 
